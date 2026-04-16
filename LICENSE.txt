@@ -1,0 +1,22 @@
+CutieEngine License
+
+Permission is granted to use CutieEngine for personal, educational, and commercial game development purposes, including creating and distributing games built with the engine.
+
+You are allowed to:
+- Use CutieEngine to create games and projects
+- Distribute games made with CutieEngine
+- Create plugins or extensions that interact with CutieEngine through its official plugin system
+
+You are NOT allowed to:
+- Modify, edit, or alter the CutieEngine core source code
+- Fork or redistribute modified versions of CutieEngine
+- Claim ownership of CutieEngine or its core engine code
+- Remove or change original attribution or credits
+
+Plugins must be separate modules that extend functionality without modifying the core engine files.
+
+All rights to the CutieEngine core engine remain exclusively with the original author.
+
+Feedback and bug reports are welcome. If you encounter issues, you are encouraged to report them so they can be improved in future versions.
+
+CutieEngine is provided as-is.
