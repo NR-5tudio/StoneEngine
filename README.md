@@ -1,6 +1,6 @@
 # CutieEngine
 CutieEngine is a simple 3D-focused game engine designed for small game development.  It is easy to understand and uses lightweight systems for rendering, scripting, and editor tools.
-
+![alt text](Core/Icons/Icon.png)
 # How to install from (release)
 - (There's no releases yet)
 - I am working on it!
