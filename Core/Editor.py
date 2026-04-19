@@ -9,7 +9,6 @@ import base64
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import QTimer, Qt
-import ctypes
 import EasyJson as json
 import Core.Welcome as Welcome
 
@@ -39,6 +38,7 @@ class Editor(QMainWindow):
         # Widgets
         self.scene = W.SceneWidget(self, world)
         self.prop_window = W.Properties(self, world)
+        self.browser = W.AssetBrowser(self, "")
 
         # MENU
         menubar = self.menuBar()
@@ -105,3 +105,4 @@ class Editor(QMainWindow):
 
     def loop(self):
         self.viewport.update()
+

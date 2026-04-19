@@ -13,117 +13,45 @@ import ctypes
 from PyQt5.QtWidgets import QFileDialog
 import os
 import Core.Helper as helper
-
+import Core.StyleLoader as style
 class WelcomeWindow(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
-
-        self.setStyleSheet("""
-            background-color: rgba(10, 10, 10, 240);
-            color: white;
-            font-size: 20px;
-        """)
-
+        self.editor = self.parent
         self.setAttribute(Qt.WA_StyledBackground, True)
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
 
-        title = QLabel("Welcome to CutieEngine")
+        title = QLabel("Welcome to Cutie-Engine")
         title.setAlignment(Qt.AlignCenter)
 
         self.pname = QLineEdit()
-        self.pname.setStyleSheet("""
-            QPushButton {
-                background-color: #ff4fd8;
-                border-radius: 10px;
-                padding: 10px;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #ff7ae6;
-            }
-        """)
         self.pname.setPlaceholderText("Project name...")
 
 
 
         self.ppath = QLineEdit()
-        self.ppath.setStyleSheet("""
-            QPushButton {
-                background-color: #ff4fd8;
-                border-radius: 10px;
-                padding: 10px;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #ff7ae6;
-            }
-        """)
         self.ppath.setPlaceholderText("Project path...")
 
 
 
         createbtn = QPushButton("Create project")
-        createbtn.setStyleSheet("""
-            QPushButton {
-                background-color: #ff4fd8;
-                border-radius: 10px;
-                padding: 10px;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #ff7ae6;
-            }
-        """)
         createbtn.clicked.connect(self.enter_editor)
 
 
 
         loadbtn = QPushButton("Load project")
-        loadbtn.setStyleSheet("""
-            QPushButton {
-                background-color: #ff4fd8;
-                border-radius: 10px;
-                padding: 10px;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #ff7ae6;
-            }
-        """)
         loadbtn.clicked.connect(self.enter_editor)
         
 
 
         cancelbtn = QPushButton("Cancel")
-        cancelbtn.setStyleSheet("""
-            QPushButton {
-                background-color: #ff4fd8;
-                border-radius: 10px;
-                padding: 10px;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #ff7ae6;
-            }
-        """)
         cancelbtn.clicked.connect(QApplication.quit)
 
         self.folder_path = ""
         
-        ppathpicker = QPushButton("Pick")
-        ppathpicker.setStyleSheet("""
-            QPushButton {
-                background-color: #ff4fd8;
-                border-radius: 10px;
-                padding: 10px;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #ff7ae6;
-            }
-        """)
+        ppathpicker = QPushButton("Browse")
         ppathpicker.clicked.connect(self.set_path)
 
 
@@ -149,10 +77,9 @@ class WelcomeWindow(QWidget):
         layout.addWidget(self.ermsg)
 
         self.setLayout(layout)
-
+        self.setStyleSheet(style.generate_qss("UserSettings/Style.json"))
     def enter_editor(self):
         error = False
-        print(f"{self.ppath.text()}")
         if (not os.path.exists(self.ppath.text())):
             self.ermsg.setText("Pick a real folder o-o")
             error = True
@@ -165,11 +92,11 @@ class WelcomeWindow(QWidget):
         if (self.pname.text() == ""):
             self.ermsg.setText("Will you pick a name :3 ?")
             error = True
-
         if error == True: return    
+        ProjectPath = helper.create_project(self.pname.text(), self.ppath.text())
         self.hide()
         self.parent().show_editor()
-
+        self.parent().browser.set_root(ProjectPath)
         return
 
 
