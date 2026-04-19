@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QListWidget, QDockWidget
 from PyQt5.QtCore import Qt
 
-from PyQt5.QtWidgets import QMenu, QDockWidget, QListWidgetItem, QListWidget, QPushButton, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QScrollArea
+from PyQt5.QtWidgets import QMenu, QAction, QDockWidget, QListWidgetItem, QListWidget, QPushButton, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QScrollArea
 from PyQt5.QtCore import Qt
 import Core.Modals as modals
 import Core.Helper as helper
@@ -282,18 +282,33 @@ class AssetBrowser(QWidget):
             self.set_folder(path)
     def on_right_click(self, pos):
         index = self.grid.indexAt(pos)
+        menu = QMenu(self)
+
         if not index.isValid():
-            return
+            create_action = menu.addAction("New Folder")
+            script_action = menu.addAction("New Script")
+            import_action = menu.addAction("Import File")
+
+            action = menu.exec(self.grid.viewport().mapToGlobal(pos))
+
+            if action == create_action:
+                print("Create new folder")
+
+            elif action == script_action:
+                print("Create new script")
+
+            elif action == import_action:
+                print("Import file")
+
+            return  # stop here
 
         path = self.model.filePath(index)
-
-        menu = QMenu(self)
 
         open_action = menu.addAction("Open")
         reveal_action = menu.addAction("Reveal Path")
         delete_action = menu.addAction("Delete")
 
-        action = menu.exec_(self.grid.mapToGlobal(pos))
+        action = menu.exec(self.grid.viewport().mapToGlobal(pos))
 
         if action == open_action:
             self.on_double_click(index)
@@ -309,7 +324,7 @@ class AssetBrowser(QWidget):
 
             reply = QMessageBox.question(
                 self,
-                "Confirm Deletion ⚠️",
+                "Confirm Deletion",
                 f"Are you sure you want to delete '{name}'?\n\nThis action cannot be undone.",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No
@@ -320,7 +335,7 @@ class AssetBrowser(QWidget):
 
             try:
                 if self.model.isDir(index):
-                    QDir(path).rmdir(path)  # (or use shutil.rmtree for real folders)
+                    QDir(path).rmdir(path)
                 else:
                     os.remove(path)
 
@@ -338,3 +353,4 @@ class AssetBrowser(QWidget):
         root = os.path.abspath(self._root_path)
 
         return path.startswith(root)
+    
