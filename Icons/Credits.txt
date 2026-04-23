@@ -1,5 +1,0 @@
-EngineIcon - @NR_5tudio
-Model - IconJam
-Folder - Alfredo Hernandez
-SoundWave - Hexagon075
-Script - @NR_5tudio
