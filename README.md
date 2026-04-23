@@ -1,5 +1,5 @@
-# CutieEngine
-CutieEngine is a simple 3D-focused game engine designed for small game development.  It is easy to understand and uses lightweight systems for rendering, scripting, and editor tools.
+# StoneEngine
+StoneEngine is a simple 3D-focused game engine designed for small game development.  It is easy to understand and uses lightweight systems for rendering, scripting, and editor tools.
 ![alt text](Core/Icons/Icon.png)
 # How to install from (release)
 - (There's no releases yet)
@@ -12,5 +12,5 @@ CutieEngine is a simple 3D-focused game engine designed for small game developme
 - After the installation finish: Run `main.py`
 
 # License
-Please read the LICENSE file before using CutieEngine.
+Please read the LICENSE file before using StoneEngine.
 By using this project, you agree to follow its license terms.

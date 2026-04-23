@@ -1,11 +1,13 @@
 from PyQt5.QtWidgets import QListWidget, QDockWidget
 from PyQt5.QtCore import Qt
 
-from PyQt5.QtWidgets import QMenu, QAction, QDockWidget, QListWidgetItem, QListWidget, QPushButton, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QScrollArea
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMenu, QFileDialog, QAction, QDockWidget, QListWidgetItem, QListWidget, QPushButton, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QScrollArea
+from PyQt5.QtCore import Qt, QModelIndex 
+from PyQt5.QtGui import QIcon, QPixmap
 import Core.Modals as modals
 import Core.Helper as helper
-
+import shutil
+from send2trash import send2trash
 
 class SceneWidget:
     def __init__(self, editor, world: dict):
@@ -20,13 +22,10 @@ class SceneWidget:
         self.list.itemClicked.connect(self.on_click)
 
         self.dock = QDockWidget("Scene", editor)
-        self.dock.setFeatures(
-            QDockWidget.DockWidgetMovable |
-            QDockWidget.DockWidgetFloatable
-        )
         
         AddButton = QPushButton("Add")
         AddButton.clicked.connect(lambda: modals.AddObjectModal(self))
+        helper.ToolTip(AddButton, "Add an object")
         DeleteButton = QPushButton("Delete")
         Vlayout = QVBoxLayout()
         Hlayout = QHBoxLayout()
@@ -102,13 +101,10 @@ class SceneWidget:
 
 class Properties:
     def __init__(self, editor, world):
+        self.obj_id = None
         self.editor = editor
         self.world = world
         self.dock = QDockWidget("Properties", editor)
-        self.dock.setFeatures(
-            QDockWidget.DockWidgetMovable |
-            QDockWidget.DockWidgetFloatable
-        )
 
         # root widget
         container = QWidget()
@@ -164,7 +160,6 @@ class Properties:
 
 
 
-import sys
 import os
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget,
@@ -174,7 +169,91 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QSize, QDir
 
+class CustomFileSystemModel(QFileSystemModel):
+    def __init__(self, icon_map=None, parent=None):
+        super().__init__(parent)
 
+        base = os.path.dirname(__file__)
+
+        self.icon_map = icon_map or {
+            ".script": QIcon("Core/Icons/script.png"),
+            ".obj": QIcon("Core/Icons/model.png"),
+            ".fbx": QIcon("Core/Icons/model.png"),
+            ".wave": QIcon("Core/Icons/wave.png"),
+            ".mp3": QIcon("Core/Icons/wave.png"),
+            "folder": QIcon("Core/Icons/folder.png"),
+        }
+
+        self._thumb_cache = {}  # important for performance
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid(): return None
+
+        file_path = self.filePath(index)
+
+        # ---------------- ICONS ----------------
+        if role == Qt.DecorationRole:
+
+            # folder icon
+            if self.isDir(index):
+                return self.icon_map["folder"]
+
+            ext = os.path.splitext(file_path)[1].lower()
+
+            # PNG thumbnail
+            if ext == ".png":
+                if file_path in self._thumb_cache:
+                    return self._thumb_cache[file_path]
+
+                pix = QPixmap(file_path)
+
+                if not pix.isNull():
+                    icon = QIcon(pix.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    self._thumb_cache[file_path] = icon
+                    return icon
+
+            # normal icons
+            if ext in self.icon_map:
+                return self.icon_map[ext]
+        if role == Qt.ToolTipRole:
+            name = self.fileName(index)
+            path = file_path
+            return f"FileName: {name}\nPath: {path}"
+        return super().data(index, role)
+
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+
+class WrappingIconDelegate(QStyledItemDelegate):
+    """Delegate that respects word-wrapped text and icons for grid view."""
+    def sizeHint(self, option, index):
+        # Get the default size hint
+        default = super().sizeHint(option, index)
+        text = index.data(Qt.DisplayRole)
+        if not text:
+            return default
+
+        # Get icon size from the view (or fallback to 64x64)
+        view = option.widget
+        if view:
+            icon_size = view.iconSize()
+        else:
+            icon_size = QSize(64, 64)
+
+        # Measure text height with wrapping
+        doc = QTextDocument()
+        doc.setDefaultFont(option.font)
+        doc.setPlainText(text)
+        # Width available for text = icon width + some margin
+        text_width = icon_size.width() + 12
+        doc.setTextWidth(text_width)
+        text_height = doc.size().height()
+
+        # Total cell size = icon height + text height + vertical spacing
+        total_height = int(icon_size.height() + text_height + 12)
+        total_width = int(icon_size.width() + 16)
+        return QSize(total_width, total_height)
 
 
 class AssetBrowser(QWidget):
@@ -185,13 +264,9 @@ class AssetBrowser(QWidget):
 
         self.dock = QDockWidget("Browser", editor)
         self.dock.setWidget(self) 
-        self.dock.setFeatures(
-            QDockWidget.DockWidgetMovable |
-            QDockWidget.DockWidgetFloatable
-        )
 
         self._root_path = None
-        self.model = QFileSystemModel()
+        self.model = CustomFileSystemModel()  # assume this exists
 
         # UI
         layout = QHBoxLayout(self)
@@ -200,10 +275,18 @@ class AssetBrowser(QWidget):
         self.tree = QTreeView()
         self.grid = QListView()
 
+        # Grid view configuration
         self.grid.setViewMode(QListView.IconMode)
         self.grid.setIconSize(QSize(64, 64))
         self.grid.setResizeMode(QListView.Adjust)
-        self.grid.setSpacing(10)
+        self.grid.setSpacing(12)
+        self.grid.setWordWrap(True)
+        self.grid.setTextElideMode(Qt.ElideNone)   # never cut text, always wrap
+        self.grid.setItemDelegate(WrappingIconDelegate(self.grid))
+
+        # Remove the problematic lines:
+        # self.grid.setUniformItemSizes(True)
+        # self.grid.setGridSize(QSize(80, 80))
 
         self.tree.clicked.connect(self.on_tree_click)
         self.grid.doubleClicked.connect(self.on_double_click)
@@ -215,20 +298,20 @@ class AssetBrowser(QWidget):
         splitter.setSizes([250, 700])
 
         layout.addWidget(splitter)
+
+        # Model setup
         self.tree.setModel(self.model)
         self.tree.setRootIndex(self.model.index(root_path))
         self.tree.hideColumn(1)  # Size
         self.tree.hideColumn(2)  # Type
-        self.tree.hideColumn(3)
+        self.tree.hideColumn(3)  # Date modified (if any)
 
         self.set_root(root_path)
-        self.grid.setIconSize(QSize(64, 64))
-        self.grid.setUniformItemSizes(True)
-        self.grid.setResizeMode(QListView.Adjust)
-        self.grid.setViewMode(QListView.IconMode)
-        self.grid.setGridSize(QSize(80, 80))
-        self.grid.setWordWrap(True)
+
         editor.addDockWidget(Qt.BottomDockWidgetArea, self.dock)
+
+    # Your existing methods: on_tree_click, on_double_click, on_right_click, set_root, etc.
+    # They remain unchanged.
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None
@@ -244,7 +327,7 @@ class AssetBrowser(QWidget):
 
             file_path = file_path.lower()
 
-            if file_path.endswith(".py"):
+            if file_path.endswith(".script"):
                 return "Script"
             if file_path.endswith(".obj") or file_path.endswith(".fbx"):
                 return "3D Model"
@@ -265,12 +348,15 @@ class AssetBrowser(QWidget):
 
         self.grid.setModel(self.model)
         self.grid.setRootIndex(self.model.index(path))
+        path = f"{path}/Content"
+        self.set_folder(path)
 
     def on_tree_click(self, index):
         path = self.model.filePath(index)
+        name = self.model.fileName(index)
+
         if self.model.isDir(index):
             self.set_folder(path)
-
     def set_folder(self, path):
         path = os.path.abspath(path)
         if path.startswith(self._root_path):
@@ -280,6 +366,9 @@ class AssetBrowser(QWidget):
         path = self.model.filePath(index)
         if self.model.isDir(index):
             self.set_folder(path)
+        else:
+            self.editor.Coder.open_file(path)
+
     def on_right_click(self, pos):
         index = self.grid.indexAt(pos)
         menu = QMenu(self)
@@ -288,21 +377,22 @@ class AssetBrowser(QWidget):
             create_action = menu.addAction("New Folder")
             script_action = menu.addAction("New Script")
             import_action = menu.addAction("Import File")
-
+            path = self.model.rootPath()
+            new_folder_path = os.path.join(path, "New Folder")
             action = menu.exec(self.grid.viewport().mapToGlobal(pos))
 
             if action == create_action:
-                print("Create new folder")
+                self.create_folder()
 
             elif action == script_action:
-                print("Create new script")
+                self.create_script()
 
             elif action == import_action:
-                print("Import file")
+                self.import_file()
 
             return  # stop here
 
-        path = self.model.filePath(index)
+        path = os.path.abspath(self.model.filePath(index))
 
         open_action = menu.addAction("Open")
         reveal_action = menu.addAction("Reveal Path")
@@ -333,18 +423,11 @@ class AssetBrowser(QWidget):
             if reply != QMessageBox.Yes:
                 return
 
-            try:
-                if self.model.isDir(index):
-                    QDir(path).rmdir(path)
-                else:
-                    os.remove(path)
-
-            except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    "Delete Failed",
-                    f"Could not delete:\n{name}\n\nError: {str(e)}"
-                )
+            try: 
+                print("Deleting:", path)
+                send2trash(path)
+            except Exception as e: QMessageBox.critical(self, "Delete Failed", f"Could not delete:\n{name}\n\nError: {str(e)}")
+    
     def is_inside_root(self, path: str) -> bool:
         if not self._root_path:
             return False
@@ -353,4 +436,49 @@ class AssetBrowser(QWidget):
         root = os.path.abspath(self._root_path)
 
         return path.startswith(root)
-    
+    def create_folder(self):
+        path = self.model.filePath(self.grid.rootIndex())
+        new_folder_path = os.path.join(path, "New Folder")
+
+        i = 1
+        while os.path.exists(new_folder_path):
+            new_folder_path = os.path.join(path, f"New Folder {i}")
+            i += 1
+
+        os.makedirs(new_folder_path)
+        print("Folder created:", new_folder_path)
+
+        index = self.grid.rootIndex()
+        self.grid.setRootIndex(QModelIndex())
+        self.grid.setRootIndex(index)
+
+
+    def create_script(self):
+        path = self.model.filePath(self.grid.rootIndex())
+        new_script_path = os.path.join(path, "NewScript.script")
+
+        i = 1
+        while os.path.exists(new_script_path):
+            new_script_path = os.path.join(path, f"new_script_{i}.script")
+            i += 1
+
+        with open(new_script_path, "w") as f:
+            f.write("# new script\n")
+
+        print("Script created:", new_script_path)
+
+        index = self.grid.rootIndex()
+        self.grid.setRootIndex(QModelIndex())
+        self.grid.setRootIndex(index)
+
+
+    def import_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Import File")
+
+        if not file_path:
+            return
+        current_path = self.model.filePath(self.grid.rootIndex())
+        dest = os.path.join(current_path, os.path.basename(file_path))
+        shutil.copy(file_path, dest)
+
+        print("Imported:", dest)

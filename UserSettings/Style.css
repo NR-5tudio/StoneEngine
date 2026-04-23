@@ -1,0 +1,92 @@
+/*
+ * Stone Engine — Theme File
+ * Edit the variables inside :root {} to change the entire engine theme.
+ * All values are used by StyleLoader.py to generate PyQt5 stylesheets.
+ *
+ * Color roles:
+ *   --bg-*        background layers (darkest to lightest)
+ *   --border-*    border colors (subtle, normal, accent)
+ *   --text-*      text colors (dim, normal, bright)
+ *   --accent-*    cyan/primary accent used on highlights
+ *   --danger-*    error / destructive action color
+ *   --btn-*       button-specific fills and labels
+ *   --input-*     input field fills and placeholder
+ *   --corner-*    panel bracket accent
+ *   --font-*      font family and sizes
+ *   --spacing-*   padding values
+ */
+
+:root {
+
+    /* ── Backgrounds ───────────────────────────────────────────────────────── */
+    --bg-window:        #060D1A;   /* outermost window fill                    */
+    --bg-panel:         #080F1E;   /* floating panel / dialog fill             */
+    --bg-input:         #050B16;   /* text field background                    */
+    --bg-btn-primary:   #0D2040;   /* primary button resting fill              */
+    --bg-btn-primary-h: #162E54;   /* primary button hover fill                */
+    --bg-btn-primary-p: #0A1A30;   /* primary button pressed fill              */
+    --bg-btn-secondary: #050B16;   /* secondary button resting fill            */
+    --bg-btn-secondary-h: #0A1628; /* secondary button hover fill              */
+    --bg-browse:        #0A1628;   /* browse button fill                       */
+    --bg-browse-h:      #0F2040;   /* browse button hover fill                 */
+
+    /* ── Borders ───────────────────────────────────────────────────────────── */
+    --border-panel:     #1A3A5C;   /* panel outer border                       */
+    --border-subtle:    #1A3A5C;   /* input / secondary button border          */
+    --border-accent:    #2A7FD4;   /* focused input / primary button border    */
+    --border-accent-h:  #4A9FFF;   /* primary button border on hover           */
+    --border-cancel:    #0E2035;   /* cancel button border                     */
+    --border-cancel-h:  #1A3A5C;   /* cancel button border on hover            */
+    --border-rule:      #1A3A5C;   /* horizontal divider line color            */
+
+    /* ── Corner brackets ───────────────────────────────────────────────────── */
+    --corner-color:     #2A7FD4;   /* CyberPanel bracket color                 */
+    --corner-size:      14;        /* bracket leg length in px (integer)       */
+    --corner-width:     2;         /* bracket stroke width in px (integer)     */
+
+    /* ── Text ──────────────────────────────────────────────────────────────── */
+    --text-title:       #E0EEFF;   /* large logo / heading text                */
+    --text-normal:      #A8C8E8;   /* input text, body                         */
+    --text-bright:      #D0E8FF;   /* input focused text                       */
+    --text-accent:      #2A7FD4;   /* subtitle, section labels, browse label   */
+    --text-accent-h:    #5AAFFF;   /* browse button hover label                */
+    --text-dim:         #2A5A8A;   /* secondary button label, section label    */
+    --text-dim-h:       #5A9FCC;   /* secondary button hover label             */
+    --text-muted:       #1E3A58;   /* placeholder, cancel label                */
+    --text-muted-h:     #2A5A8A;   /* cancel hover label                       */
+    --text-version:     #0E2035;   /* version string                           */
+    --text-status:      #1E4060;   /* status line default                      */
+    --text-placeholder: #1E3A58;   /* input placeholder color                  */
+
+    /* ── Primary button label ──────────────────────────────────────────────── */
+    --btn-primary-label:   #7BBFED;
+    --btn-primary-label-h: #C0DEFF;
+
+    /* ── Danger / error ────────────────────────────────────────────────────── */
+    --danger:           #ff0000;   /* error status text                        */
+
+    /* ── Selection ─────────────────────────────────────────────────────────── */
+    --selection-bg:     #1A4A7A;   /* text selection highlight in inputs       */
+
+    /* ── Typography ────────────────────────────────────────────────────────── */
+    --font-mono:        Courier New, Courier, monospace;
+    --font-size-title:  34;        /* px, integer                              */
+    --font-size-sub:    10;        /* px, integer  (ENGINE label)              */
+    --font-size-label:  12;         /* px, integer  (section labels)            */
+    --font-size-input:  12;        /* px, integer                              */
+    --font-size-btn:    11;        /* px, integer                              */
+    --font-size-small:  15;        /* px, integer  (cancel, browse, status)    */
+    --font-size-tiny:   12;         /* px, integer  (version)                   */
+
+    /* ── Spacing ────────────────────────────────────────────────────────────── */
+    --spacing-panel-h:  32;        /* panel horizontal padding px              */
+    --spacing-panel-v:  32;        /* panel top padding px                     */
+    --spacing-panel-b:  24;        /* panel bottom padding px                  */
+    --panel-width:      380;       /* fixed panel width px                     */
+
+    /* ── Input / button heights ─────────────────────────────────────────────── */
+    --height-input:     36;        /* text field height px                     */
+    --height-btn-main:  38;        /* primary/secondary button height px       */
+    --height-btn-cancel: 32;       /* cancel button height px                  */
+
+}
