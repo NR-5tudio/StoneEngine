@@ -9,11 +9,8 @@ from PyQt5.QtCore import Qt
 import Core.Editor as E
 import EasyJson as json
 import Core.StyleLoader as style
+import subprocess
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# CSS theme loader  (mirrors the one in WelcomeWindow.py)
-# ══════════════════════════════════════════════════════════════════════════════
 
 CSS_PATH = os.path.join("UserSettings", "Style.css")
 
@@ -436,10 +433,6 @@ def _build_global_qss(t: dict) -> str:
 
     """
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Application bootstrap
-# ══════════════════════════════════════════════════════════════════════════════
 
 def apply_dark_theme(app: QApplication):
     app.setStyle("Fusion")

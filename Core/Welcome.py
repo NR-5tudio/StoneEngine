@@ -1,10 +1,3 @@
-"""
-WelcomeWindow.py
-Reads UserSettings/Style.css for all theme tokens and builds the
-Stone Engine welcome / project-picker dialog from them.
-
-Drop-in replacement — class signature is unchanged from the original.
-"""
 
 import os
 import re
@@ -13,14 +6,9 @@ from PyQt5.QtWidgets import (
     QLabel, QLineEdit, QApplication, QFileDialog, QFrame,
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QPainter, QColor, QPen
-
+from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap
 import Core.Helper as helper
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# CSS theme loader
-# ══════════════════════════════════════════════════════════════════════════════
 
 CSS_PATH = os.path.join("UserSettings", "Style.css")
 
@@ -78,7 +66,6 @@ _DEFAULTS = {
     "height-btn-cancel":   "32",
 }
 
-
 def _load_theme(path: str = CSS_PATH) -> dict:
     """
     Parse CSS custom properties from :root {} in the given file.
@@ -115,11 +102,6 @@ def _load_theme(path: str = CSS_PATH) -> dict:
         theme[key.strip().lstrip("-")] = val.strip()
 
     return theme
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Stylesheet factory
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _make_styles(t: dict) -> dict:
     """Build all QSS strings from theme tokens."""
@@ -229,11 +211,6 @@ def _make_styles(t: dict) -> dict:
         ),
     }
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Custom painted panel
-# ══════════════════════════════════════════════════════════════════════════════
-
 class _CyberPanel(QWidget):
     """Opaque panel that paints corner brackets using theme tokens."""
 
@@ -273,10 +250,6 @@ def _rule(t: dict) -> QFrame:
     return line
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# WelcomeWindow  (public class — signature unchanged)
-# ══════════════════════════════════════════════════════════════════════════════
-
 class WelcomeWindow(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
@@ -288,12 +261,22 @@ class WelcomeWindow(QWidget):
 
         self._build_ui()
 
-    # ── UI ─────────────────────────────────────────────────────────────────────
-
+    # UI
     def _build_ui(self):
         t = self._theme
         s = self._styles
         fn = t["font-mono"]
+
+        # Icon
+        self.image_label = QLabel()
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.icon = QPixmap("Core/Icons/Icon.png")
+        self.scaled_icon = self.icon.scaled(
+            200, 200,                  # target size
+            Qt.KeepAspectRatio,        # key part
+            Qt.SmoothTransformation    # better quality
+        )
+        self.image_label.setPixmap(self.scaled_icon)
 
         self.setStyleSheet(f"WelcomeWindow {{ background: {t['bg-window']}; }}")
 
@@ -322,7 +305,7 @@ class WelcomeWindow(QWidget):
             f"color:{t['text-title']}; font-family:{fn}; "
             f"font-size:{t['font-size-title']}px; font-weight:bold; letter-spacing:8px;"
         )
-        inner.addWidget(lbl_stone)
+        inner.addWidget(self.image_label)
 
         lbl_engine = QLabel("ENGINE")
         lbl_engine.setAlignment(Qt.AlignCenter)
@@ -411,7 +394,7 @@ class WelcomeWindow(QWidget):
 
         inner.addSpacing(6)
 
-        lbl_ver = QLabel("v0.1.0")
+        lbl_ver = QLabel("v0.2")
         lbl_ver.setAlignment(Qt.AlignCenter)
         lbl_ver.setStyleSheet(
             f"color:{t['text-version']}; font-family:{fn}; "
@@ -437,7 +420,7 @@ class WelcomeWindow(QWidget):
 
         ProjectPath = helper.create_project(self.pname.text(), self.ppath.text())
         self.hide()
-        self.parent().show_editor()
+        self.parent().show_editor(ProjectPath)
         self.parent().browser.set_root(ProjectPath)
 
     def _err(self, msg: str):

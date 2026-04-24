@@ -12,7 +12,8 @@ from PyQt5.QtCore import QTimer, Qt
 import EasyJson as json
 import Core.Welcome as Welcome
 import Core.CodeEditor as Coder
-
+import subprocess
+import os
 
 def icon_from_base64(b64_string: str) -> QIcon:
     byte_data = base64.b64decode(b64_string)
@@ -28,7 +29,7 @@ Ico = "['iVBORw0KGgoAAAANSUhEUgAAAokAAALBCAYAAAA03DsgAAAAAXNSR0IArs4c6QAAAARnQU1
 class Editor(QMainWindow):
     def __init__(self, world):
         super().__init__()
-
+        self.project_path = ""
         self.world = world
         self.setWindowTitle("Stone Engine")
         self.setWindowIcon(icon_from_base64(Ico))
@@ -45,13 +46,18 @@ class Editor(QMainWindow):
 
         # MENU
         menubar = self.menuBar()
-        file_menu = menubar.addMenu("File")
+        Project = menubar.addMenu("Project")
         self.widgets = [self.scene, self.prop_window, self.browser, self.Coder]
         self.create_view_menu()
 
+        # FileMenuContent
         exit_action = QAction("Exit", self)
         exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
+        self.open_project_path_action = QAction("Open Project Path", self)
+        
+        
+        Project.addAction(self.open_project_path_action)
+        Project.addAction(exit_action)
 
         widget_menu = menubar.addMenu("Widgets")
 
@@ -110,7 +116,9 @@ class Editor(QMainWindow):
         if hasattr(self, "welcome"):
             self.welcome.setGeometry(self.rect())
 
-    def show_editor(self):
+    def show_editor(self, path):
+        self.project_path = path
+        self.open_project_path_action.triggered.connect(lambda: subprocess.Popen(["explorer", path]))
         self.welcome.hide()
 
     def loop(self):

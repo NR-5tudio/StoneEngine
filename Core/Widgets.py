@@ -367,7 +367,11 @@ class AssetBrowser(QWidget):
         if self.model.isDir(index):
             self.set_folder(path)
         else:
-            self.editor.Coder.open_file(path)
+
+            # LOAD SCRIPTS
+            if path.endswith(".script"):
+                self.editor.Coder.open_file(path)
+        
 
     def on_right_click(self, pos):
         index = self.grid.indexAt(pos)

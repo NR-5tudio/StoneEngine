@@ -1,5 +1,8 @@
 EngineIcon - @NR_5tudio
+EngineBanner - @NR_5tudio
+EngineText - @NR_5tudio
+Script - @NR_5tudio
+
 Model - IconJam
 Folder - Alfredo Hernandez
 SoundWave - Hexagon075
-Script - @NR_5tudio
