@@ -8,9 +8,11 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap
 import Core.Helper as helper
+import EasyJson as json
 
-
-CSS_PATH = os.path.join("UserSettings", "Style.css")
+Settings = json.Load("UserSettings/Settings.json")
+from pathlib import Path
+CSS_PATH = Settings["Engine"]["StyleFile"]
 
 _DEFAULTS = {
     "bg-window":           "#060D1A",
@@ -370,7 +372,7 @@ class WelcomeWindow(QWidget):
         btn_load = QPushButton("LOAD")
         btn_load.setFixedHeight(int(t["height-btn-main"]))
         btn_load.setStyleSheet(s["secondary"])
-        btn_load.clicked.connect(self.enter_editor)
+        btn_load.clicked.connect(self.load_editor)
 
         btn_row.addWidget(btn_create)
         btn_row.addWidget(btn_load)
@@ -418,11 +420,29 @@ class WelcomeWindow(QWidget):
             self._err("// ERR: folder not found")
             return
 
-        ProjectPath = helper.create_project(self.pname.text(), self.ppath.text())
-        self.hide()
-        self.parent().show_editor(ProjectPath)
-        self.parent().browser.set_root(ProjectPath)
+        ProjectPath, ProjectFilePath = helper.create_project(self.pname.text(), self.ppath.text(), self.parent().world)
 
+        self.parent().show_editor(ProjectPath, ProjectFilePath)
+        self.parent().browser.set_root(ProjectPath)
+    
+    def load_editor(self):
+        project_path, _ = QFileDialog.getOpenFileName(self, "Load 'Project.stone' file.", "")
+        if not project_path: return
+        Project = {}
+        try:
+            Project = json.Load(str(project_path))
+        except Exception as e:
+            print(f"Error while loading a project:\n{e}")
+            return
+        if not Project: return
+        self.parent().world.clear()
+        print(Project)
+        self.parent().world.update(Project)
+        self.parent().browser.set_root(str(project_path).replace(Path(project_path).name, "Game"))
+        self.parent().refresh_editor()
+        self.parent().show_editor(str(project_path).replace(Path(project_path).name, "Game"), str(project_path))
+        print(str(project_path).replace(Path(project_path).name, "Game"))
+    
     def _err(self, msg: str):
         self.ermsg.setStyleSheet(self._styles["status_err"])
         self.ermsg.setText(msg)

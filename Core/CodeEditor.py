@@ -1,26 +1,3 @@
-"""
-BlockBuilderDock + BlockBuilderManager
-=======================================
-A PyQt5 dock-widget system that loads Python files as draggable code blocks.
-
-Architecture note
------------------
-Each open file is represented by a ``FileSession``.  A FileSession owns:
-  • the block-list data / logic  (``BlockEditorWidget`` — a plain QWidget)
-  • save/dirty state
-  • the QDockWidget shell used *only* when the session is popped out
-
-The ``BlockBuilderManager`` owns a QStackedWidget that holds the
-``BlockEditorWidget`` directly.  No widget is ever shared between a
-QDockWidget and a QStackedWidget — that is what caused the blank-view bug.
-
-Public API
-----------
-    manager = BlockBuilderManager(parent=main_window)
-    main_window.addDockWidget(Qt.RightDockWidgetArea, manager)
-    manager.open_file("/absolute/path/to/script.py")   # from file browser
-"""
-
 from __future__ import annotations
 
 import re
@@ -91,9 +68,7 @@ _TAB_SS = f"""
 """
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+
 
 def _indent_level(line: str) -> int:
     s = line.lstrip()
@@ -164,9 +139,7 @@ class _PythonHighlighter(QSyntaxHighlighter):
                 self.setFormat(m.start(), m.end() - m.start(), fmt)
 
 
-# ---------------------------------------------------------------------------
-# BlockItem
-# ---------------------------------------------------------------------------
+
 
 class BlockItem(QListWidgetItem):
     def __init__(self, text: str, indent: int = 0):
@@ -188,9 +161,7 @@ class BlockItem(QListWidgetItem):
         self._refresh()
 
 
-# ---------------------------------------------------------------------------
-# BlockListWidget
-# ---------------------------------------------------------------------------
+
 
 class BlockListWidget(QListWidget):
     blocksChanged = pyqtSignal()
@@ -250,9 +221,6 @@ class BlockListWidget(QListWidget):
         self.blocksChanged.emit()
 
 
-# ---------------------------------------------------------------------------
-# BlockEditorWidget  — the REAL content widget (plain QWidget, never a dock)
-# ---------------------------------------------------------------------------
 
 class BlockEditorWidget(QWidget):
     """
@@ -486,9 +454,7 @@ class BlockEditorWidget(QWidget):
             self.closeRequested.emit()
 
 
-# ---------------------------------------------------------------------------
-# _FileSession  — internal record per open file
-# ---------------------------------------------------------------------------
+
 
 class _FileSession:
     def __init__(self, editor: BlockEditorWidget):
@@ -509,9 +475,7 @@ class _FileSession:
         return self.dock is not None
 
 
-# ---------------------------------------------------------------------------
-# BlockBuilderManager
-# ---------------------------------------------------------------------------
+
 
 class BlockBuilderManager(QWidget):
     """
@@ -868,9 +832,7 @@ class BlockBuilderManager(QWidget):
             self._tabs.setTabText(idx, path.name + (" *" if dirty else ""))
 
 
-# ---------------------------------------------------------------------------
-# BlockBuilderDock  — standalone single-file dock (no manager needed)
-# ---------------------------------------------------------------------------
+
 
 class BlockBuilderDock(QDockWidget):
     """
@@ -917,9 +879,6 @@ class BlockBuilderDock(QDockWidget):
 
 
 
-# ---------------------------------------------------------------------------
-# Demo  (python block_builder_dock.py)
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     import sys, tempfile, os

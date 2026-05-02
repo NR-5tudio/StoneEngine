@@ -1,0 +1,24 @@
+# NodeEditorContent/Nodes/ExampleMath/Add.node
+#
+# Example custom node: Add two floats.
+# This file is exec()'d by node_loader.py.
+# BaseNode is injected into the namespace automatically.
+
+from PyQt5.QtGui import QColor
+
+
+class Add(BaseNode):
+    META         = {"title": "Add", "category": "ExampleMath"}
+    HEADER_COLOR = QColor("#1e3a2a")
+    SUBTITLE     = "Math"
+
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+        self.add_in("A",      "float")
+        self.add_in("B",      "float")
+        self.add_out("Result","float")
+
+    def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
+        a = ctx['expr'](self.node_id, 0)
+        b = ctx['expr'](self.node_id, 1)
+        return f"({a} + {b})"

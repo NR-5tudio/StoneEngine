@@ -1,0 +1,24 @@
+# Nodes/GameInput/Axis.node
+# Returns a float axis value in [-1, 1].
+# Positive key gives +1, Negative key gives -1, neither = 0.
+# Engine must expose: float GetAxis(const std::string& pos, const std::string& neg);
+# Example: GetAxis("D", "A") → horizontal, GetAxis("W", "S") → vertical
+
+from PyQt5.QtGui import QColor
+
+
+class Axis(BaseNode):
+    META         = {"title": "Axis", "category": "GameInput"}
+    HEADER_COLOR = QColor("#3a1a5c")
+    SUBTITLE     = "Input"
+
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+        self.add_in("Positive Key", "string")   # e.g. "D"
+        self.add_in("Negative Key", "string")   # e.g. "A"
+        self.add_out("Axis Value",  "float")    # -1.0 .. 1.0
+
+    def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
+        pos = ctx['expr'](self.node_id, 0)
+        neg = ctx['expr'](self.node_id, 1)
+        return f"GetAxis({pos}, {neg})"

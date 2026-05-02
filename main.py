@@ -5,14 +5,15 @@ import os
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QStackedWidget
 from PyQt5.QtGui import QPalette, QColor, QFont
 from PyQt5.QtCore import Qt
-
+import EasyJson as json
 import Core.Editor as E
 import EasyJson as json
 import Core.StyleLoader as style
 import subprocess
 
+Settings = json.Load("UserSettings/Settings.json")
 
-CSS_PATH = os.path.join("UserSettings", "Style.css")
+CSS_PATH = Settings["Engine"]["StyleFile"]
 
 _DEFAULTS = {
     # welcome backgrounds
@@ -95,24 +96,23 @@ _DEFAULTS = {
 
 
 def _load_theme(path: str = CSS_PATH) -> dict:
-    """Parse :root { --var: value; } from Style.css. Falls back to _DEFAULTS."""
     theme = dict(_DEFAULTS)
 
     if not os.path.isfile(path):
-        print(f"[StyleLoader] '{path}' not found — using built-in defaults.")
+        print(f"[StyleLoader] '{path}' not found  using built-in defaults.")
         return theme
 
     try:
         with open(path, "r", encoding="utf-8") as fh:
             raw = fh.read()
     except OSError as exc:
-        print(f"[StyleLoader] Cannot read '{path}': {exc} — using built-in defaults.")
+        print(f"[StyleLoader] Cannot read '{path}': {exc}  using built-in defaults.")
         return theme
 
     raw = re.sub(r"/\*.*?\*/", "", raw, flags=re.DOTALL)
     match = re.search(r":root\s*\{([^}]*)\}", raw, re.DOTALL)
     if not match:
-        print(f"[StyleLoader] No :root block in '{path}' — using built-in defaults.")
+        print(f"[StyleLoader] No :root block in '{path}'  using built-in defaults.")
         return theme
 
     for line in match.group(1).splitlines():
@@ -462,13 +462,14 @@ def run():
     apply_dark_theme(app)
     app.setFont(QFont("Segoe UI", 12))
 
-    world = {
+    Project = {
         "actors":   [],
         "scripts":  [],
         "selected": None,
+        "Settings": {}
     }
-
-    editor = E.Editor(world)
+    EditTimeLine = []
+    editor = E.Editor(Project, EditTimeLine)
     editor.resize(1200, 700)
     editor.show()
 

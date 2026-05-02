@@ -1,19 +1,19 @@
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QMainWindow, QAction
 import Core.Viewport as V
 import Core.Widgets as W
 import ctypes
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 import base64
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QAction
 import EasyJson as json
 import Core.Welcome as Welcome
 import Core.CodeEditor as Coder
+from pathlib import Path
+import Core.Helper as helper
 import subprocess
 import os
+import Core.function_exporter as fe
+from Core.NodeEditorContent.Core.dock import NodeEditorDock
 
 def icon_from_base64(b64_string: str) -> QIcon:
     byte_data = base64.b64decode(b64_string)
@@ -27,10 +27,12 @@ Ico = "['iVBORw0KGgoAAAANSUhEUgAAAokAAALBCAYAAAA03DsgAAAAAXNSR0IArs4c6QAAAARnQU1
 
 
 class Editor(QMainWindow):
-    def __init__(self, world):
+    def __init__(self, world, edittimeline):
         super().__init__()
+        self.edittimeline = edittimeline
         self.project_path = ""
-        self.world = world
+        self.projectfilepath = ""
+        self.world = world # Actor: []
         self.setWindowTitle("Stone Engine")
         self.setWindowIcon(icon_from_base64(Ico))
 
@@ -42,35 +44,38 @@ class Editor(QMainWindow):
         self.scene = W.SceneWidget(self, world)
         self.prop_window = W.Properties(self, world)
         self.browser = W.AssetBrowser(self, "")
-        self.Coder = Coder.BlockBuilderManager(self)
+
+
+        self.node_editor = NodeEditorDock(parent=self)
+
+        self.node_editor.setWindowFlags(
+            Qt.Window |
+            Qt.WindowMinimizeButtonHint |
+            Qt.WindowMaximizeButtonHint |
+            Qt.WindowCloseButtonHint
+        )
+        self.node_editor.resize(1200, 800)
+        self.node_editor.setFloating(True)
+        
 
         # MENU
         menubar = self.menuBar()
         Project = menubar.addMenu("Project")
-        self.widgets = [self.scene, self.prop_window, self.browser, self.Coder]
-        self.create_view_menu()
 
         # FileMenuContent
         exit_action = QAction("Exit", self)
         exit_action.triggered.connect(self.close)
+        save_action = QAction("Save", self)
+        save_action.triggered.connect(self.save_project)
         self.open_project_path_action = QAction("Open Project Path", self)
         
         
-        Project.addAction(self.open_project_path_action)
-        Project.addAction(exit_action)
+        Project.addAction(save_action) # SAVE
+        Project.addAction(self.open_project_path_action) # OPEN PROJECT PATH
+        Project.addAction(exit_action) # EXIT
 
-        widget_menu = menubar.addMenu("Widgets")
 
-        scene_action = QAction("Scene: Hide", self)
 
-        def SceneToggle():
-            self.scene.set_visible(not self.scene.dock.isVisible())
-            scene_action.setText(
-                "Scene: Hide" if self.scene.dock.isVisible() else "Scene: Show"
-            )
-
-        scene_action.triggered.connect(SceneToggle)
-        widget_menu.addAction(scene_action)
 
         prop_action = QAction("Properties: Hide", self)
 
@@ -81,7 +86,6 @@ class Editor(QMainWindow):
             )
 
         prop_action.triggered.connect(propToggle)
-        widget_menu.addAction(prop_action)
 
         # LOOP
         self.timer = QTimer()
@@ -116,9 +120,10 @@ class Editor(QMainWindow):
         if hasattr(self, "welcome"):
             self.welcome.setGeometry(self.rect())
 
-    def show_editor(self, path):
-        self.project_path = path
-        self.open_project_path_action.triggered.connect(lambda: subprocess.Popen(["explorer", path]))
+    def show_editor(self, projpath, filepath):
+        self.project_path = projpath
+        self.projectfilepath = filepath
+        self.open_project_path_action.triggered.connect(lambda: subprocess.Popen(["explorer", projpath]))
         self.welcome.hide()
 
     def loop(self):
@@ -148,3 +153,14 @@ class Editor(QMainWindow):
             dock.dock.visibilityChanged.connect(sync_visibility)
 
             view_menu.addAction(action)
+    
+    def save_project(self):
+        try:
+            json.Save(self.world, self.projectfilepath)
+
+        except Exception as e:
+            print(f"Error while saving:\n{e}")
+
+    def refresh_editor(self):
+        self.scene.refresh()
+        print(self.world)

@@ -1,0 +1,91 @@
+/*
+ * Stone Engine — Theme File
+ * Edit the variables inside ':root {}' to change the entire engine theme.
+ *
+ * Color roles:
+ *   --bg-*        background layers (darkest to lightest)
+ *   --border-*    border colors (subtle, normal, accent)
+ *   --text-*      text colors (dim, normal, bright)
+ *   --accent-*    cyan/primary accent used on highlights
+ *   --danger-*    error / destructive action color
+ *   --btn-*       button-specific fills and labels
+ *   --input-*     input field fills and placeholder
+ *   --corner-*    panel bracket accent
+ *   --font-*      font family and sizes
+ *   --spacing-*   padding values
+ */
+
+:root {
+
+    /* ── Backgrounds ───────────────────────────────────────────────────────── */
+    --bg-window:        #F4F7FB;
+    --bg-panel:         #FFFFFF;
+    --bg-input:         #F0F3F8;
+    --bg-btn-primary:   #DCEBFF;
+    --bg-btn-primary-h: #C7DFFF;
+    --bg-btn-primary-p: #B5D2FF;
+    --bg-btn-secondary: #F0F3F8;
+    --bg-btn-secondary-h: #E2E8F2;
+    --bg-browse:        #E6F0FF;
+    --bg-browse-h:      #D6E6FF;
+
+    /* ── Borders ───────────────────────────────────────────────────────────── */
+    --border-panel:     #D0DCEB;
+    --border-subtle:    #D0DCEB;
+    --border-accent:    #3A8DFF;
+    --border-accent-h:  #6AA8FF;
+    --border-cancel:    #C5D3E5;
+    --border-cancel-h:  #AFC4DD;
+    --border-rule:      #D0DCEB;
+
+    /* ── Corner brackets ───────────────────────────────────────────────────── */
+    --corner-color:     #3A8DFF;
+    --corner-size:      14;
+    --corner-width:     2;
+
+    /* ── Text ──────────────────────────────────────────────────────────────── */
+    --text-title:       #1A2A3A;
+    --text-normal:      #2E3E50;
+    --text-bright:      #000000;
+    --text-accent:      #3A8DFF;
+    --text-accent-h:    #5AA8FF;
+    --text-dim:         #5A6B7C;
+    --text-dim-h:       #3E4F60;
+    --text-muted:       #8A9BAF;
+    --text-muted-h:     #6B7F95;
+    --text-version:     #A0AEC0;
+    --text-status:      #4A5D73;
+    --text-placeholder: #9AA9BC;
+
+    /* ── Primary button label ──────────────────────────────────────────────── */
+    --btn-primary-label:   #1F5FBF;
+    --btn-primary-label-h: #003F99;
+
+    /* ── Danger / error ────────────────────────────────────────────────────── */
+    --danger:           #E53935;
+
+    /* ── Selection ─────────────────────────────────────────────────────────── */
+    --selection-bg:     #CFE3FF;
+
+    /* ── Typography ────────────────────────────────────────────────────────── */
+    --font-mono:        Courier New, Courier, monospace;
+    --font-size-title:  34;
+    --font-size-sub:    10;
+    --font-size-label:  12;
+    --font-size-input:  12;
+    --font-size-btn:    11;
+    --font-size-small:  15;
+    --font-size-tiny:   12;
+
+    /* ── Spacing ────────────────────────────────────────────────────────────── */
+    --spacing-panel-h:  32;
+    --spacing-panel-v:  32;
+    --spacing-panel-b:  24;
+    --panel-width:      380;
+
+    /* ── Input / button heights ─────────────────────────────────────────────── */
+    --height-input:     36;
+    --height-btn-main:  38;
+    --height-btn-cancel: 32;
+
+}

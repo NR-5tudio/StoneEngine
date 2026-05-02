@@ -1,0 +1,32 @@
+# Nodes/Player/Speed.node
+# Scales an axis value by a speed constant to get a movement delta.
+# Result = Axis * Speed * DeltaTime
+# Engine must expose: float GetDeltaTime();
+
+from PyQt5.QtGui import QColor
+
+
+class Speed(BaseNode):
+    META         = {"title": "Scale by Speed", "category": "Player"}
+    HEADER_COLOR = QColor("#1a3a1a")
+    SUBTITLE     = "Player"
+
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+        self.add_in("Axis",       "float")   # input from Axis node
+        self.add_in("Speed",      "float")   # e.g. 300.0
+        self.add_in("Use DeltaTime", "bool") # multiply by DeltaTime?
+        self.add_out("Delta",     "float")
+
+    def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
+        axis  = ctx['expr'](self.node_id, 0)
+        speed = ctx['expr'](self.node_id, 1)
+        use_dt = ctx['expr'](self.node_id, 2)
+        # if Use DeltaTime is a literal true/false we inline it
+        if use_dt in ("true", "1", "1.0f", "1.000000f"):
+            return f"({axis} * {speed} * GetDeltaTime())"
+        elif use_dt in ("false", "0", "0.0f", "0.000000f"):
+            return f"({axis} * {speed})"
+        else:
+            # runtime expression — conditional
+            return f"({axis} * {speed} * ({use_dt} ? GetDeltaTime() : 1.0f))"

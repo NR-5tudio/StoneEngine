@@ -1,0 +1,24 @@
+# Nodes/Logic/Select.node
+# Ternary: if Condition != 0 → return A, else return B
+# Useful for blending or switching values based on a flag.
+
+from PyQt5.QtGui import QColor
+
+
+class Select(BaseNode):
+    META         = {"title": "Select", "category": "Logic"}
+    HEADER_COLOR = QColor("#2a1a3a")
+    SUBTITLE     = "Logic"
+
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+        self.add_in("Condition", "float")   # non-zero = true
+        self.add_in("A",         "float")   # returned when true
+        self.add_in("B",         "float")   # returned when false
+        self.add_out("Result",   "float")
+
+    def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
+        cond = ctx['expr'](self.node_id, 0)
+        a    = ctx['expr'](self.node_id, 1)
+        b    = ctx['expr'](self.node_id, 2)
+        return f"(({cond} != 0.0f) ? {a} : {b})"

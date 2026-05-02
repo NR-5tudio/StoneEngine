@@ -273,6 +273,7 @@ class AssetBrowser(QWidget):
         splitter = QSplitter(Qt.Horizontal)
 
         self.tree = QTreeView()
+
         self.grid = QListView()
 
         # Grid view configuration
@@ -370,7 +371,7 @@ class AssetBrowser(QWidget):
 
             # LOAD SCRIPTS
             if path.endswith(".script"):
-                self.editor.Coder.open_file(path)
+                self.editor.node_editor.Open_Script(path)
         
 
     def on_right_click(self, pos):
@@ -467,7 +468,35 @@ class AssetBrowser(QWidget):
             i += 1
 
         with open(new_script_path, "w") as f:
-            f.write("# new script\n")
+            f.write("""
+{
+  "nodes": [
+    {
+      "id": "01214a22",
+      "class_key": "OutputNode",
+      "meta": {
+        "title": "Output",
+        "category": "_builtin"
+      },
+      "x": 0.0,
+      "y": 0.0,
+      "in_pins": [
+        {
+          "name": "Result",
+          "type": "float",
+          "value": 0.0
+        }
+      ],
+      "out_pins": []
+    }
+  ],
+  "wires": [],
+  "meta": {
+    "func_name": "function_name"
+  }
+}
+""")
+            
 
         print("Script created:", new_script_path)
 

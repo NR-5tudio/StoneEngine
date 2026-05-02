@@ -15,6 +15,8 @@ from PyQt5.QtWidgets import (
     QApplication
 )
 import mouse
+import EasyJson as json
+
 
 def has_invalid_chars(text: str) -> bool:
     """Used for better ProjectNaming"""
@@ -39,7 +41,7 @@ def clean(v):
 
 
 
-def create_project(name, path: str):
+def create_project(name, path: str, project):
     base = Path(path) / name 
 
     # create main project folder
@@ -48,14 +50,14 @@ def create_project(name, path: str):
     # structure
     (base / "Game").mkdir(exist_ok=True)
     (base / "Game" / "Content").mkdir(exist_ok=True)
-    (base / "worlds").mkdir(exist_ok=True)
 
     # files
     (base / "README.md").write_text(f"# {name}\n")
-
+    json.Save(project, f"{base}/{name}.stone")
     new_project_path = base / "Game"
+    new_file_path = base / f"{name}.stone"
 
-    return str(new_project_path)
+    return str(new_project_path), str(new_file_path)
 
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor

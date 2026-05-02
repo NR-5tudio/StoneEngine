@@ -1,0 +1,24 @@
+# Nodes/Logic/Compare.node
+# Compares two floats. Returns 1.0 if the condition is true, 0.0 otherwise.
+# Operator choices: > < >= <= == !=
+
+from PyQt5.QtGui import QColor
+
+
+class Compare(BaseNode):
+    META         = {"title": "Compare  >", "category": "Logic"}
+    HEADER_COLOR = QColor("#2a1a3a")
+    SUBTITLE     = "Logic"
+
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+        self.add_in("A",      "float")
+        self.add_in("B",      "float")
+        self.add_out("Result","float")   # 1.0 = true, 0.0 = false
+
+    def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
+        # extract the operator symbol from the title  e.g. "Compare  >"  -> ">"
+        op = self.META.get("title", "Compare  >").split()[-1]
+        a  = ctx['expr'](self.node_id, 0)
+        b  = ctx['expr'](self.node_id, 1)
+        return f"(({a} {op} {b}) ? 1.0f : 0.0f)"

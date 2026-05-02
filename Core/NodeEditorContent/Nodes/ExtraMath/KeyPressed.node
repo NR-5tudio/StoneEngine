@@ -1,0 +1,24 @@
+# NodeEditorContent/Nodes/GameInput/KeyPressed.node
+#
+# Returns 1.0 if the given key is pressed, 0.0 otherwise.
+# In the generated C++, this maps to your engine's IsKeyPressed() call.
+# The engine's main.cpp must provide:
+#     bool IsKeyPressed(const std::string& key);
+
+from PyQt5.QtGui import QColor
+
+
+class KeyPressed(BaseNode):
+    META         = {"title": "Key Pressed", "category": "GameInput"}
+    HEADER_COLOR = QColor("#3a1a5c")
+    SUBTITLE     = "Input"
+
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+        self.add_in("Key",    "string")   # e.g. "W", "Space", "Left"
+        self.add_out("Value", "float")    # 1.0 if pressed, 0.0 if not
+
+    def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
+        key_expr = ctx['expr'](self.node_id, 0)
+        # Generates:  (IsKeyPressed("W") ? 1.0f : 0.0f)
+        return f"(IsKeyPressed({key_expr}) ? 1.0f : 0.0f)"
