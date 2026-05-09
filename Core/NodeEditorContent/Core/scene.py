@@ -1,27 +1,13 @@
-"""
-scene.py
---------
-NodeScene – QGraphicsScene subclass.
+"""scene.py  –  NodeScene"""
 
-Responsibilities:
-  • Holds all nodes and wires
-  • Manages temp-wire drag
-  • Fires QUndoCommands for every mutation
-  • Copy / Paste
-  • Save / Load (JSON)
-  • refresh_wires()
-"""
-
-import copy
-import json
 import uuid
 
 from PyQt5.QtWidgets import QGraphicsScene, QUndoStack
 from PyQt5.QtCore    import QPointF, Qt
 
-from Core.NodeEditorContent.Core.pin        import Pin
-from Core.NodeEditorContent.Core.wire       import Wire, TempWire
-from Core.NodeEditorContent.Core.undo_redo  import (
+from Core.NodeEditorContent.Core.pin       import Pin
+from Core.NodeEditorContent.Core.wire      import Wire, TempWire
+from Core.NodeEditorContent.Core.undo_redo import (
     AddNodeCmd, RemoveNodeCmd, MoveNodeCmd,
     AddWireCmd, RemoveWireCmd, PasteCmd
 )
@@ -35,22 +21,14 @@ class NodeScene(QGraphicsScene):
     def __init__(self):
         super().__init__()
         self.setSceneRect(-5000, -5000, 10000, 10000)
-
-        self.nodes : list = []
-        self.wires : list = []
-
-        self._temp_wire : TempWire = None
-        self._wire_src  : Pin      = None
-
-        self._undo = QUndoStack(self)
-
-        # clipboard: raw dict snapshot
+        self.nodes      = []
+        self.wires      = []
+        self._temp_wire = None
+        self._wire_src  = None
+        self._undo      = QUndoStack(self)
         self._clipboard = None
+        self._pre_move  = {}
 
-        # track pre-move positions for MoveNodeCmd
-        self._pre_move : dict = {}   # node -> QPointF
-
-    # ── undo stack access ────────────────────────────────────
     @property
     def undo_stack(self) -> QUndoStack:
         return self._undo
@@ -58,8 +36,7 @@ class NodeScene(QGraphicsScene):
     # ── node management ──────────────────────────────────────
     def add_node(self, node, pos: QPointF = None, push_undo: bool = False):
         if push_undo:
-            cmd = AddNodeCmd(self, node, pos or QPointF(0, 0))
-            self._undo.push(cmd)
+            self._undo.push(AddNodeCmd(self, node, pos or QPointF(0, 0)))
             return node
         self.nodes.append(node)
         self.addItem(node)
@@ -68,14 +45,11 @@ class NodeScene(QGraphicsScene):
         return node
 
     def remove_node(self, node):
-        """Public: push a RemoveNodeCmd onto the undo stack."""
         if getattr(node, 'PERMANENT', False):
             return
-        cmd = RemoveNodeCmd(self, node)
-        self._undo.push(cmd)
+        self._undo.push(RemoveNodeCmd(self, node))
 
     def _remove_node_no_cmd(self, node):
-        """Internal: actually remove without touching the undo stack."""
         for p in node.in_pins + node.out_pins:
             for w in list(p.wires):
                 self._remove_wire_no_cmd(w)
@@ -86,14 +60,10 @@ class NodeScene(QGraphicsScene):
 
     # ── wire management ──────────────────────────────────────
     def _finalize_wire(self, src: Pin, dst: Pin):
-        """Internal: create Wire, register it, notify pins. Returns the wire."""
         if src.direction == 'in':
             src, dst = dst, src
-
-        # disconnect existing wire on dst (one wire per in-pin enforced)
         for w in list(dst.wires):
             self._remove_wire_no_cmd(w)
-
         w = Wire(src, dst)
         self.addItem(w)
         self.wires.append(w)
@@ -104,12 +74,9 @@ class NodeScene(QGraphicsScene):
         return w
 
     def remove_wire(self, wire: Wire):
-        """Public: push RemoveWireCmd."""
-        cmd = RemoveWireCmd(self, wire)
-        self._undo.push(cmd)
+        self._undo.push(RemoveWireCmd(self, wire))
 
     def _remove_wire_no_cmd(self, wire: Wire):
-        """Internal: actually remove wire, notify pins."""
         for lst in (wire.src.wires, wire.dst.wires, self.wires):
             if wire in lst:
                 lst.remove(wire)
@@ -124,7 +91,7 @@ class NodeScene(QGraphicsScene):
         for w in self.wires:
             w.update_path()
 
-    # ── temp wire (drag) ─────────────────────────────────────
+    # ── temp wire ────────────────────────────────────────────
     def start_wire(self, pin: Pin):
         if self._temp_wire:
             self.removeItem(self._temp_wire)
@@ -145,8 +112,7 @@ class NodeScene(QGraphicsScene):
                 None
             )
             if hit and self._can_connect(self._wire_src, hit):
-                cmd = AddWireCmd(self, self._wire_src, hit)
-                self._undo.push(cmd)
+                self._undo.push(AddWireCmd(self, self._wire_src, hit))
             self.removeItem(self._temp_wire)
             self._temp_wire = None
             self._wire_src  = None
@@ -155,9 +121,9 @@ class NodeScene(QGraphicsScene):
     def _can_connect(self, a: Pin, b: Pin) -> bool:
         if a.direction == b.direction:
             return False
-        return a.pin_type == b.pin_type
+        return a.pin_type == b.pin_type or 'custom' in (a.pin_type, b.pin_type)
 
-    # ── move tracking (for MoveNodeCmd) ──────────────────────
+    # ── move tracking ─────────────────────────────────────────
     def record_pre_move(self, nodes):
         self._pre_move = {n: n.scenePos() for n in nodes}
 
@@ -165,8 +131,7 @@ class NodeScene(QGraphicsScene):
         for node, old_pos in self._pre_move.items():
             new_pos = node.scenePos()
             if (new_pos - old_pos).manhattanLength() > 1:
-                cmd = MoveNodeCmd(node, old_pos, new_pos)
-                self._undo.push(cmd)
+                self._undo.push(MoveNodeCmd(node, old_pos, new_pos))
         self._pre_move.clear()
 
     # ── copy / paste ─────────────────────────────────────────
@@ -182,11 +147,9 @@ class NodeScene(QGraphicsScene):
     def paste(self):
         if not self._clipboard:
             return
-        offset = QPointF(30, 30)
-
-        # rebuild nodes with new IDs
-        id_remap   = {}   # old_id -> new_node
-        new_items  = []
+        offset   = QPointF(30, 30)
+        id_remap = {}
+        new_items = []
         for nd in self._clipboard["nodes"]:
             node = self._rebuild_node(nd)
             if node is None:
@@ -197,7 +160,6 @@ class NodeScene(QGraphicsScene):
             pos = QPointF(nd.get("x", 0), nd.get("y", 0)) + offset
             new_items.append((node, pos))
 
-        # rebuild wires between pasted nodes only
         wire_defs = []
         for wd in self._clipboard.get("wires", []):
             sn = id_remap.get(wd["src"])
@@ -205,10 +167,7 @@ class NodeScene(QGraphicsScene):
             if sn and dn:
                 wire_defs.append((sn, wd["sp"], dn, wd["dp"]))
 
-        cmd = PasteCmd(self, new_items, wire_defs)
-        self._undo.push(cmd)
-
-        # select pasted nodes
+        self._undo.push(PasteCmd(self, new_items, wire_defs))
         self.clearSelection()
         for node, _ in new_items:
             node.setSelected(True)
@@ -217,7 +176,7 @@ class NodeScene(QGraphicsScene):
         node_set = set(id(n) for n in nodes)
         result   = []
         for w in self.wires:
-            if (id(w.src.node) in node_set and id(w.dst.node) in node_set):
+            if id(w.src.node) in node_set and id(w.dst.node) in node_set:
                 try:
                     si = w.src.node.out_pins.index(w.src)
                     di = w.dst.node.in_pins.index(w.dst)
@@ -227,12 +186,10 @@ class NodeScene(QGraphicsScene):
                     pass
         return result
 
-    # ── delete selected ───────────────────────────────────────
     def delete_selected(self):
-        from Core.NodeEditorContent.Core.wire import Wire as WireClass
         self._undo.beginMacro("Delete Selection")
         for item in list(self.selectedItems()):
-            if isinstance(item, WireClass):
+            if isinstance(item, Wire):
                 self.remove_wire(item)
         for item in list(self.selectedItems()):
             from Core.NodeEditorContent.Core.node_base import BaseNode
@@ -251,11 +208,9 @@ class NodeScene(QGraphicsScene):
                                   "dst": w.dst.node.node_id, "dp": di})
             except ValueError:
                 pass
-        return {"nodes": [n.to_dict() for n in self.nodes],
-                "wires": wire_data}
+        return {"nodes": [n.to_dict() for n in self.nodes], "wires": wire_data}
 
     def from_dict(self, data: dict):
-        # clear everything
         for n in list(self.nodes):
             self._remove_node_no_cmd(n)
         for w in list(self.wires):
@@ -269,6 +224,19 @@ class NodeScene(QGraphicsScene):
             node = self._rebuild_node(nd)
             if node is None:
                 continue
+            # restore extra pins
+            default_in  = len(node.in_pins)
+            default_out = len(node.out_pins)
+            for pd in nd.get("in_pins",  [])[default_in:]:
+                node.add_in(pd["name"], pd.get("type", "float"))
+            for pd in nd.get("out_pins", [])[default_out:]:
+                node.add_out(pd["name"], pd.get("type", "float"))
+            # restore saved inline values
+            for i, pd in enumerate(nd.get("in_pins", [])):
+                if i < len(node.in_pins):
+                    node.in_pins[i]._saved_val = pd.get("value", 0)
+                    node.in_pins[i].on_disconnected()
+
             pos = QPointF(nd.get("x", 0), nd.get("y", 0))
             self.add_node(node, pos)
             id_map[nd["id"]] = node
@@ -282,40 +250,29 @@ class NodeScene(QGraphicsScene):
                     self._finalize_wire(sn.out_pins[si], dn.in_pins[di])
 
     def _rebuild_node(self, nd: dict):
-        """Reconstruct a node from its serialised dict."""
-        from Core.NodeEditorContent.Core.nodes_builtin import (
-            MathNode, OutputNode, CustomNode
-        )
-        from Core.NodeEditorContent.Core.node_loader import REGISTRY
+        from Core.NodeEditorContent.Core.nodes_builtin import MathNode, OutputNode, CustomNode
+        from Core.NodeEditorContent.Core.nodes_script  import InputNode, ScriptNode
+        from Core.NodeEditorContent.Core.node_loader   import REGISTRY
 
-        ck = nd.get("class_key", "")
-        nid = nd.get("id", _new_id())
+        ck    = nd.get("class_key", "")
+        nid   = nd.get("id", _new_id())
+        title = nd.get("meta", {}).get("title", "Node")
 
-        # built-ins
         if ck == "MathNode":
             node = MathNode(nid, nd.get("op", "+"))
         elif ck == "OutputNode":
             node = OutputNode(nid)
         elif ck == "CustomNode":
-            title = nd.get("meta", {}).get("title", "Node")
-            node  = CustomNode(nid, title)
+            node = CustomNode(nid, title)
+        elif ck == "InputNode":
+            node = InputNode(nid)
+            node._restore(nd)
+            return node
+        elif ck == "ScriptNode":
+            node = ScriptNode(nid, nd.get("script_path", ""))
         elif ck in REGISTRY:
             node = REGISTRY[ck](nid)
         else:
-            node = CustomNode(nid, nd.get("meta", {}).get("title", ck))
-
-        # restore extra pins beyond the defaults
-        default_in  = len(node.in_pins)
-        default_out = len(node.out_pins)
-        for pd in nd.get("in_pins",  [])[default_in:]:
-            node.add_in(pd["name"], pd.get("type", "float"))
-        for pd in nd.get("out_pins", [])[default_out:]:
-            node.add_out(pd["name"], pd.get("type", "float"))
-
-        # restore saved inline values
-        for i, pd in enumerate(nd.get("in_pins", [])):
-            if i < len(node.in_pins):
-                node.in_pins[i]._saved_val = pd.get("value", 0)
-                node.in_pins[i].on_disconnected()   # refresh widget
+            node = CustomNode(nid, title)
 
         return node

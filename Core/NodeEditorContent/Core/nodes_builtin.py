@@ -1,31 +1,19 @@
-"""
-nodes_builtin.py
-----------------
-Built-in node types that ship with the editor:
-  • MathNode   – binary arithmetic (+  -  *  /  %)
-  • OutputNode – the single permanent sink; defines the function's return value
-  • CustomNode – a blank user-named node (add pins manually)
-"""
+"""nodes_builtin.py  –  MathNode, OutputNode, CustomNode"""
 
-from PyQt5.QtGui import QColor
-from Core.NodeEditorContent.Core.node_base import BaseNode
+from PyQt5.QtGui     import QColor
+from PyQt5.QtWidgets import QMenu
+from Core.NodeEditorContent.Core.node_base import BaseNode, _ask_pin, _DARK
+from Core.NodeEditorContent.Core.pin       import Pin
 
-_CPP_TYPE = {
-    'float' : 'float',
-    'int'   : 'int',
-    'bool'  : 'bool',
-    'string': 'std::string',
-}
+_CPP_TYPE = {'float':'float','int':'int','bool':'bool',
+             'string':'std::string','custom':''}
 
 
 def cpp_type(ptype: str) -> str:
     return _CPP_TYPE.get(ptype, 'auto')
 
 
-# ─────────────────────────────────────────────────────────────
 class MathNode(BaseNode):
-    """Binary math operator:  Result = A  op  B"""
-
     HEADER_COLOR = QColor("#1e3a2a")
     SUBTITLE     = "Math"
 
@@ -47,14 +35,7 @@ class MathNode(BaseNode):
         return d
 
 
-# ─────────────────────────────────────────────────────────────
 class OutputNode(BaseNode):
-    """
-    Permanent sink node.
-    Its input pins define the function's return values.
-    The function name is set in the toolbar — not here.
-    """
-
     HEADER_COLOR = QColor("#6b2020")
     SUBTITLE     = "Output"
     PERMANENT    = True
@@ -64,10 +45,7 @@ class OutputNode(BaseNode):
         super().__init__(node_id)
         self.add_in("Result", "float")
 
-    # Output node: allow adding/removing value inputs only
     def contextMenuEvent(self, e):
-        from PyQt5.QtWidgets import QMenu
-        from Core.NodeEditorContent.Core.node_base import _ask_pin, _DARK
         m = QMenu()
         m.setStyleSheet(_DARK)
         add_act = m.addAction("＋ Add Return Value")
@@ -83,16 +61,12 @@ class OutputNode(BaseNode):
             return
         if chosen == add_act:
             n, t = _ask_pin(None, "Add Return Value")
-            if n:
-                self.add_in(n, t)
-        elif chosen and hasattr(chosen, 'data') and isinstance(chosen.data(), __import__('Core.NodeEditorContent.Core.pin', fromlist=['Pin']).Pin):
+            if n: self.add_in(n, t)
+        elif chosen and isinstance(chosen.data(), Pin):
             self.remove_pin(chosen.data())
 
 
-# ─────────────────────────────────────────────────────────────
 class CustomNode(BaseNode):
-    """A blank user-named node.  Pins added via right-click."""
-
     HEADER_COLOR = QColor("#1a3a5c")
 
     def __init__(self, node_id: str, title: str = "Node"):
@@ -100,7 +74,6 @@ class CustomNode(BaseNode):
         super().__init__(node_id)
 
     def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
-        # default: pass-through the first input or '0'
         if self.in_pins:
             return ctx['expr'](self.node_id, 0)
         return "0"

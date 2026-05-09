@@ -110,11 +110,6 @@ class Editor(QMainWindow):
         self.welcome.show()
         self.welcome.raise_()
 
-
-
-
-
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "welcome"):
@@ -125,6 +120,8 @@ class Editor(QMainWindow):
         self.projectfilepath = filepath
         self.open_project_path_action.triggered.connect(lambda: subprocess.Popen(["explorer", projpath]))
         self.welcome.hide()
+        self.node_editor._editor.view.set_workspace(self.project_path)
+        self.prop_window.UpdatePath(projpath)
 
     def loop(self):
         self.viewport.update()

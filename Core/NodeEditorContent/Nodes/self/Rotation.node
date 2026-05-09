@@ -1,0 +1,25 @@
+from PyQt5.QtGui import QColor
+
+
+class GetSelfLocation(BaseNode):
+    META = {"title": "Get Self Rotation", "category": "self"}
+    HEADER_COLOR = QColor("#1a3a5c")
+    SUBTITLE = "Transform" #Small text on the right of the header
+
+
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+        self.add_out("Rotation X", "float")
+        self.add_out("Rotation Y", "float")
+        self.add_out("Rotation Z", "float")
+
+
+    def to_cpp_expr(self, out_pin_index: int, ctx: dict) -> str:
+        if out_pin_index == 0:
+            return "GetSelfRotationX()"
+        if out_pin_index == 1:
+            return "GetSelfRotationY()"
+        if out_pin_index == 2:
+            return "GetSelfRotationZ()"
+
+        return "0.0f"

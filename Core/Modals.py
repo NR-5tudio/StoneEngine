@@ -104,3 +104,83 @@ def AddObjectModal(parent=None):
         pass
 
     dialog.exec_()
+
+
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QLineEdit,
+    QPushButton, QHBoxLayout, QApplication
+)
+import sys
+
+
+def InputTextDialog(label="Label", message="Message",
+                    Exitable=False, DoneName="Done"):
+
+    class _Dialog(QDialog):
+        def __init__(self):
+            super().__init__()
+
+            self.result_text = None
+            self.setWindowTitle(label)
+
+            layout = QVBoxLayout()
+
+            self.msg = QLabel(message)
+            layout.addWidget(self.msg)
+
+            self.input = QLineEdit()
+            layout.addWidget(self.input)
+
+            btn_layout = QHBoxLayout()
+
+            self.done_btn = QPushButton(DoneName)
+            self.cancel_btn = QPushButton("Cancel")
+
+            btn_layout.addWidget(self.done_btn)
+            if Exitable:
+                btn_layout.addWidget(self.cancel_btn)
+
+            layout.addLayout(btn_layout)
+            self.setLayout(layout)
+
+            self.done_btn.clicked.connect(self.finish)
+            self.input.returnPressed.connect(self.finish)
+
+            if Exitable:
+                self.cancel_btn.clicked.connect(self.reject)
+
+            if not Exitable:
+                self.setWindowFlags(self.windowFlags() & ~self.windowFlags())
+
+        def finish(self):
+            text = self.input.text().strip()
+            if text == "" and not Exitable:
+                return
+            if text == "" and Exitable:
+                self.result_text = None
+            else:
+                self.result_text = text
+            self.accept()
+
+        def closeEvent(self, event):
+            if not Exitable and not self.result_text:
+                event.ignore()
+            else:
+                event.accept()
+
+    app = QApplication.instance()
+    created_app = False
+
+    if not app:
+        app = QApplication(sys.argv)
+        created_app = True
+
+    dlg = _Dialog()
+    dlg.exec_()
+
+    result = dlg.result_text
+
+    if created_app:
+        app.quit()
+
+    return result

@@ -121,13 +121,14 @@ class Properties:
         self.code_name = QLabel()
         self.lay.addWidget(self.code_name)
 
-        self.pos = helper.Vector3Editor(label="Position", callback=self.update_v3_object)
+        self.pos = helper.Vector3Editor(label="Position", callback=self.update_v3_object, editor=self.editor)
+        self.pos.project_path = editor.project_path
         self.lay.addWidget(self.pos)
 
-        self.rot = helper.Vector3Editor(label="Rotation", callback=self.update_v3_object)
+        self.rot = helper.Vector3Editor(label="Rotation", callback=self.update_v3_object, editor=self.editor)
         self.lay.addWidget(self.rot)
 
-        self.size = helper.Vector3Editor(label="Size", callback=self.update_v3_object)
+        self.size = helper.Vector3Editor(label="Size", callback=self.update_v3_object, editor=self.editor)
         self.lay.addWidget(self.size)
 
         scroll.setWidget(content)
@@ -138,6 +139,12 @@ class Properties:
 
         self.dock.setWidget(container)
         editor.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+        
+    def UpdatePath(self, path):
+        self.pos.UpdatePath(path)
+        self.size.UpdatePath(path)
+        self.rot.UpdatePath(path)
+
     def set_visible(self, value: bool):
         self.dock.setVisible(value)
     def on_select(self, selected_obj):
@@ -460,11 +467,10 @@ class AssetBrowser(QWidget):
 
     def create_script(self):
         path = self.model.filePath(self.grid.rootIndex())
-        new_script_path = os.path.join(path, "NewScript.script")
-
+        new_script_path = os.path.join(path, f"{modals.InputTextDialog("New Script", "Enter the script name:", True, "Create")}.script")
         i = 1
         while os.path.exists(new_script_path):
-            new_script_path = os.path.join(path, f"new_script_{i}.script")
+            new_script_path = os.path.join(path, f"{modals.InputTextDialog("New Script", "The name you entered is already been taken, \nEnter another script name:", True, "Create")}.script")
             i += 1
 
         with open(new_script_path, "w") as f:
@@ -505,6 +511,7 @@ class AssetBrowser(QWidget):
         self.grid.setRootIndex(index)
 
 
+
     def import_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Import File")
 
@@ -515,3 +522,17 @@ class AssetBrowser(QWidget):
         shutil.copy(file_path, dest)
 
         print("Imported:", dest)
+
+
+
+    def dragEnterEvent(self, event):    
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+
+
+    def dropEvent(self, event):
+        files = event.mimeData().urls()
+        if files:
+            file_path = files[0].toLocalFile()
+            print(file_path)

@@ -94,7 +94,6 @@ _DEFAULTS = {
     "height-btn-cancel":   "32",
 }
 
-
 def _load_theme(path: str = CSS_PATH) -> dict:
     theme = dict(_DEFAULTS)
 
@@ -123,7 +122,6 @@ def _load_theme(path: str = CSS_PATH) -> dict:
         theme[key.strip().lstrip("-")] = val.strip()
 
     return theme
-
 
 def _build_global_qss(t: dict) -> str:
     """
@@ -433,9 +431,8 @@ def _build_global_qss(t: dict) -> str:
 
     """
 
-
 def apply_dark_theme(app: QApplication):
-    app.setStyle("Fusion")
+    app.setStyle("Fusion")  
 
     # QPalette keeps non-QSS widgets (native dialogs, etc.) consistent
     palette = QPalette()
@@ -456,7 +453,6 @@ def apply_dark_theme(app: QApplication):
     theme = _load_theme()
     app.setStyleSheet(_build_global_qss(theme))
 
-
 def run():
     app = QApplication(sys.argv)
     apply_dark_theme(app)
@@ -474,7 +470,6 @@ def run():
     editor.show()
 
     sys.exit(app.exec_())
-
 
 if __name__ == "__main__":
     run()   

@@ -103,7 +103,7 @@ class NodeEditorWidget(QWidget):
         toolbar.addStretch()
         hint = QLabel("Middle: pan  •  Scroll: zoom  •  Right-click: add node  •  F: frame all")
         hint.setStyleSheet("color:#2a3a5c;font-size:9px")
-        toolbar.addWidget(hint)
+        #toolbar.addWidget(hint)
 
         # ── Root layout ───────────────────────────────────────
         root = QVBoxLayout(self)

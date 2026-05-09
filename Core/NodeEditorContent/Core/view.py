@@ -1,21 +1,18 @@
 """
-view.py
--------
-NodeView – QGraphicsView subclass.
-
-Handles:
-  • Grid background (minor + major lines)
-  • Middle-mouse pan, scroll-wheel zoom
-  • Right-click context menu (built-ins + plugin tree mirroring Nodes/ structure)
-  • Keyboard: Delete, Ctrl+Z/Y, Ctrl+C/V, F (frame all)
-  • Mouse-press position tracking → sent to scene for MoveNodeCmd
+view.py  –  NodeView
+Right-click menu includes:
+  • Built-in Math nodes
+  • Custom blank node
+  • Input Node  (for script authors)
+  • Project >   (scans workspace path for .script files, arbitrarily nested)
+  • Nodes >     (plugin tree from Nodes/ folder)
 """
 
-from PyQt5.QtWidgets import (
-    QGraphicsView, QMenu, QInputDialog, QAction
-)
-from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtGui  import QPainter, QPen, QBrush, QColor, QKeySequence
+import os
+
+from PyQt5.QtWidgets import QGraphicsView, QMenu, QInputDialog
+from PyQt5.QtCore    import Qt, QPointF
+from PyQt5.QtGui     import QPainter, QPen, QBrush, QColor
 
 from Core.NodeEditorContent.Core.scene import NodeScene
 
@@ -23,10 +20,12 @@ C_BG         = QColor("#0d1117")
 C_GRID_MINOR = QColor("#141922")
 C_GRID_MAJOR = QColor("#1c2433")
 
-_DARK = ("QMenu{background:#0d1117;color:#d4e0f0;border:1px solid #2a3a5c}"
-         "QMenu::item:selected{background:#1a2a5c}"
-         "QMenu::item{padding:4px 18px}"
-         "QMenu::separator{height:1px;background:#1c2433;margin:3px 0}")
+_DARK  = ("QMenu{background:#0d1117;color:#d4e0f0;border:1px solid #2a3a5c}"
+          "QMenu::item:selected{background:#1a2a5c}"
+          "QMenu::item{padding:4px 18px}"
+          "QMenu::separator{height:1px;background:#1c2433;margin:3px 0}")
+_MSUB  = ("QMenu{background:#0d1117;color:#d4e0f0;border:1px solid #2a3a5c}"
+          "QMenu::item:selected{background:#1a2a5c}")
 
 
 class NodeView(QGraphicsView):
@@ -37,12 +36,16 @@ class NodeView(QGraphicsView):
         self.setDragMode(QGraphicsView.RubberBandDrag)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        self._panning       = False
+        self._pan_start     = None
+        self._move_started  = False
+        self._workspace     = ""   # set via update_path()
 
-        self._panning   = False
-        self._pan_start = None
-        self._move_started = False   # track if a node drag began
+    # ── workspace path ────────────────────────────────────────
+    def set_workspace(self, path: str):
+        self._workspace = path
 
-    # ── grid ────────────────────────────────────────────────
+    # ── grid ─────────────────────────────────────────────────
     def drawBackground(self, painter: QPainter, rect):
         super().drawBackground(painter, rect)
         for step, color in ((20, C_GRID_MINOR), (100, C_GRID_MAJOR)):
@@ -54,92 +57,63 @@ class NodeView(QGraphicsView):
             for y in range(ty, int(rect.bottom()), step):
                 painter.drawLine(int(rect.left()), y, int(rect.right()), y)
 
-    # ── zoom ────────────────────────────────────────────────
+    # ── zoom / pan ────────────────────────────────────────────
     def wheelEvent(self, e):
-        factor = 1.12 if e.angleDelta().y() > 0 else 1 / 1.12
-        self.scale(factor, factor)
+        f = 1.12 if e.angleDelta().y() > 0 else 1 / 1.12
+        self.scale(f, f)
 
-    # ── pan ─────────────────────────────────────────────────
     def mousePressEvent(self, e):
         if e.button() == Qt.MiddleButton:
-            self._panning   = True
-            self._pan_start = e.pos()
-            self.setCursor(Qt.ClosedHandCursor)
-            e.accept()
-            return
-
-        # record positions before a potential drag
+            self._panning = True; self._pan_start = e.pos()
+            self.setCursor(Qt.ClosedHandCursor); return
         sc = self.scene()
         if e.button() == Qt.LeftButton and isinstance(sc, NodeScene):
             selected = [n for n in sc.nodes if n.isSelected()]
             if selected:
                 sc.record_pre_move(selected)
                 self._move_started = True
-
         super().mousePressEvent(e)
 
     def mouseMoveEvent(self, e):
         if self._panning:
-            d = e.pos() - self._pan_start
-            self._pan_start = e.pos()
-            self.horizontalScrollBar().setValue(
-                self.horizontalScrollBar().value() - d.x())
-            self.verticalScrollBar().setValue(
-                self.verticalScrollBar().value() - d.y())
-            e.accept()
+            d = e.pos() - self._pan_start; self._pan_start = e.pos()
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - d.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - d.y())
             return
         super().mouseMoveEvent(e)
 
     def mouseReleaseEvent(self, e):
         if e.button() == Qt.MiddleButton:
-            self._panning = False
-            self.setCursor(Qt.ArrowCursor)
-            e.accept()
-            return
-
+            self._panning = False; self.setCursor(Qt.ArrowCursor); return
         super().mouseReleaseEvent(e)
-
         if e.button() == Qt.LeftButton and self._move_started:
             sc = self.scene()
             if isinstance(sc, NodeScene):
                 sc.commit_moves()
             self._move_started = False
 
-    # ── keyboard ────────────────────────────────────────────
+    # ── keyboard ──────────────────────────────────────────────
     def keyPressEvent(self, e):
-        sc = self.scene()
-        if not isinstance(sc, NodeScene):
-            super().keyPressEvent(e)
-            return
-
+        sc  = self.scene()
         mod = e.modifiers()
         key = e.key()
+        if not isinstance(sc, NodeScene):
+            super().keyPressEvent(e); return
 
-        if key == Qt.Key_Delete or key == Qt.Key_Backspace:
+        if key in (Qt.Key_Delete, Qt.Key_Backspace):
             sc.delete_selected()
-
         elif key == Qt.Key_Z and mod & Qt.ControlModifier:
-            if mod & Qt.ShiftModifier:
-                sc.undo_stack.redo()
-            else:
-                sc.undo_stack.undo()
-
+            sc.undo_stack.redo() if mod & Qt.ShiftModifier else sc.undo_stack.undo()
         elif key == Qt.Key_Y and mod & Qt.ControlModifier:
             sc.undo_stack.redo()
-
         elif key == Qt.Key_C and mod & Qt.ControlModifier:
             sc.copy_selected()
-
         elif key == Qt.Key_V and mod & Qt.ControlModifier:
             sc.paste()
-
         elif key == Qt.Key_A and mod & Qt.ControlModifier:
-            for item in sc.items():
-                item.setSelected(True)
-
+            for item in sc.items(): item.setSelected(True)
         elif key == Qt.Key_F:
             self._frame_all()
-
         else:
             super().keyPressEvent(e)
 
@@ -148,96 +122,129 @@ class NodeView(QGraphicsView):
         if not r.isNull():
             self.fitInView(r.adjusted(-60, -60, 60, 60), Qt.KeepAspectRatio)
 
-    # ── right-click context menu ──────────────────────────────
+    # ── right-click menu ──────────────────────────────────────
     def contextMenuEvent(self, e):
-        sp = self.mapToScene(e.pos())
-
-        # only show if we right-clicked on empty canvas
+        sp  = self.mapToScene(e.pos())
         hit = self.itemAt(e.pos())
         if hit is not None:
-            super().contextMenuEvent(e)
-            return
+            super().contextMenuEvent(e); return
 
         menu = QMenu(self)
         menu.setStyleSheet(_DARK)
-        menu.setTitle("Add Node")
 
-        # ── Built-in math ──────────────────────────────
-        math_menu = menu.addMenu("∑  Math")
-        math_menu.setStyleSheet(_DARK)
+        # Math
+        math_m = menu.addMenu("∑  Math")
+        math_m.setStyleSheet(_MSUB)
         for op in ["+", "-", "*", "/", "%"]:
-            _op = op
-            math_menu.addAction(op, lambda o=_op: self._add_math(o, sp))
+            math_m.addAction(op, lambda o=op: self._add_math(o, sp))
 
-        # ── Custom blank node ──────────────────────────
+        # Custom blank
         menu.addAction("◻  Custom Node", lambda: self._add_custom(sp))
 
-        # ── Plugin nodes (from Nodes/ folder) ──────────
+        # Input Node (for script authors defining inputs)
+        menu.addAction("⬡  Input Node",  lambda: self._add_input_node(sp))
+
+        # Plugin nodes tree
         from Core.NodeEditorContent.Core.node_loader import TREE
         if TREE:
             menu.addSeparator()
-            plug_menu = menu.addMenu("🔌  Nodes")
-            plug_menu.setStyleSheet(_DARK)
-            self._build_tree_menu(plug_menu, TREE, sp)
+            plug_m = menu.addMenu("🔌  Nodes")
+            plug_m.setStyleSheet(_MSUB)
+            self._build_plugin_tree(plug_m, TREE, sp)
+
+        # Project scripts tree
+        menu.addSeparator()
+        proj_m = menu.addMenu("📁  Project")
+        proj_m.setStyleSheet(_MSUB)
+        self._build_project_tree(proj_m, sp)
 
         menu.exec_(e.globalPos())
 
-    def _build_tree_menu(self, parent_menu: QMenu, tree: dict, sp: QPointF):
-        """Recursively build the folder tree into QMenu entries."""
-        from Core.NodeEditorContent.Core.node_loader import REGISTRY
+    # ── project tree ──────────────────────────────────────────
+    def _build_project_tree(self, parent_menu: QMenu, sp: QPointF):
+        root = self._workspace
+        if not root or not os.path.isdir(root):
+            act = parent_menu.addAction("(no workspace set)")
+            act.setEnabled(False)
+            return
 
-        # separate sub-folders from leaf classes
+        self._scan_dir_for_scripts(parent_menu, root, root, sp)
+
+    def _scan_dir_for_scripts(self, menu: QMenu, dirpath: str,
+                               root: str, sp: QPointF):
+        try:
+            entries = sorted(os.scandir(dirpath), key=lambda e: (not e.is_dir(), e.name))
+        except PermissionError:
+            return
+
+        for entry in entries:
+            if entry.name.startswith('.') or entry.name.startswith('_'):
+                continue
+            if entry.is_dir():
+                sub = menu.addMenu(f"📁 {entry.name}")
+                sub.setStyleSheet(
+                    "QMenu{background:#0d1117;color:#d4e0f0;border:1px solid #2a3a5c}"
+                    "QMenu::item:selected{background:#1a2a5c}")
+                self._scan_dir_for_scripts(sub, entry.path, root, sp)
+            elif entry.name.endswith(".script"):
+                label = entry.name[:-7]   # strip .script
+                path  = entry.path
+                menu.addAction(f"📄 {label}",
+                               lambda p=path: self._add_script_node(p, sp))
+
+    # ── plugin node tree ──────────────────────────────────────
+    def _build_plugin_tree(self, parent_menu: QMenu, tree: dict, sp: QPointF):
         folders = {k: v for k, v in tree.items() if isinstance(v, dict)}
         leaves  = {k: v for k, v in tree.items() if not isinstance(v, dict)}
-
-        for folder_name in sorted(folders):
-            sub = parent_menu.addMenu(f"📁  {folder_name}")
+        for name in sorted(folders):
+            sub = parent_menu.addMenu(f"📁  {name}")
             sub.setStyleSheet(
                 "QMenu{background:#0d1117;color:#d4e0f0;border:1px solid #2a3a5c}"
-                "QMenu::item:selected{background:#1a2a5c}"
-            )
-            self._build_tree_menu(sub, folders[folder_name], sp)
-
-        for class_key in sorted(leaves):
-            cls   = leaves[class_key]
-            title = getattr(cls, 'META', {}).get("title", class_key)
-            _ck   = class_key
-            parent_menu.addAction(title, lambda k=_ck: self._add_plugin(k, sp))
+                "QMenu::item:selected{background:#1a2a5c}")
+            self._build_plugin_tree(sub, folders[name], sp)
+        for ck in sorted(leaves):
+            cls   = leaves[ck]
+            title = getattr(cls, 'META', {}).get("title", ck)
+            parent_menu.addAction(title, lambda k=ck: self._add_plugin(k, sp))
 
     # ── node factories ────────────────────────────────────────
-    def _scene(self) -> NodeScene:
+    def _sc(self) -> NodeScene:
         return self.scene()
-
-    def _add_math(self, op: str, sp: QPointF):
-        from Core.NodeEditorContent.Core.nodes_builtin import MathNode
-        from Core.NodeEditorContent.Core.undo_redo import AddNodeCmd
-        sc   = self._scene()
-        node = MathNode(sc._new_id() if hasattr(sc, '_new_id') else self._uid(), op)
-        cmd  = AddNodeCmd(sc, node, sp)
-        sc.undo_stack.push(cmd)
-
-    def _add_custom(self, sp: QPointF):
-        from Core.NodeEditorContent.Core.nodes_builtin import CustomNode
-        from Core.NodeEditorContent.Core.undo_redo import AddNodeCmd
-        name, ok = QInputDialog.getText(self.window(), "Custom Node", "Node name:", text="MyNode")
-        if not ok or not name.strip():
-            return
-        sc   = self._scene()
-        node = CustomNode(self._uid(), name.strip())
-        cmd  = AddNodeCmd(sc, node, sp)
-        sc.undo_stack.push(cmd)
-
-    def _add_plugin(self, class_key: str, sp: QPointF):
-        from Core.NodeEditorContent.Core.node_loader import REGISTRY
-        from Core.NodeEditorContent.Core.undo_redo import AddNodeCmd
-        cls = REGISTRY.get(class_key)
-        if cls is None:
-            return
-        sc   = self._scene()
-        node = cls(self._uid())
-        cmd  = AddNodeCmd(sc, node, sp)
-        sc.undo_stack.push(cmd)
 
     def _uid(self) -> str:
         import uuid
         return str(uuid.uuid4())[:8]
+
+    def _add_math(self, op: str, sp: QPointF):
+        from Core.NodeEditorContent.Core.nodes_builtin import MathNode
+        from Core.NodeEditorContent.Core.undo_redo    import AddNodeCmd
+        node = MathNode(self._uid(), op)
+        self._sc().undo_stack.push(AddNodeCmd(self._sc(), node, sp))
+
+    def _add_custom(self, sp: QPointF):
+        from Core.NodeEditorContent.Core.nodes_builtin import CustomNode
+        from Core.NodeEditorContent.Core.undo_redo    import AddNodeCmd
+        name, ok = QInputDialog.getText(self.window(), "Custom Node", "Node name:", text="MyNode")
+        if not ok or not name.strip(): return
+        node = CustomNode(self._uid(), name.strip())
+        self._sc().undo_stack.push(AddNodeCmd(self._sc(), node, sp))
+
+    def _add_input_node(self, sp: QPointF):
+        from Core.NodeEditorContent.Core.nodes_script import InputNode
+        from Core.NodeEditorContent.Core.undo_redo   import AddNodeCmd
+        node = InputNode(self._uid())
+        self._sc().undo_stack.push(AddNodeCmd(self._sc(), node, sp))
+
+    def _add_script_node(self, path: str, sp: QPointF):
+        from Core.NodeEditorContent.Core.nodes_script import ScriptNode
+        from Core.NodeEditorContent.Core.undo_redo   import AddNodeCmd
+        node = ScriptNode(self._uid(), path)
+        self._sc().undo_stack.push(AddNodeCmd(self._sc(), node, sp))
+
+    def _add_plugin(self, class_key: str, sp: QPointF):
+        from Core.NodeEditorContent.Core.node_loader import REGISTRY
+        from Core.NodeEditorContent.Core.undo_redo   import AddNodeCmd
+        cls = REGISTRY.get(class_key)
+        if cls is None: return
+        node = cls(self._uid())
+        self._sc().undo_stack.push(AddNodeCmd(self._sc(), node, sp))
